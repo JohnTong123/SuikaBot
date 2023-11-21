@@ -15,7 +15,7 @@ FRICTION = 0.001
 SKEWED_PROBABILITY = [0.35, 0.25, 0.15, 0.12, 0.08, 0.05]
 FRUITS = pygame.sprite.Group()
 game_joever = False
-score = 0
+score = 0 #
 NAMES = ["Cherry", "Strawberry", "Grape", "Dekopon", "Orange", "Apple", 
          "Pear", "Peach", "Pineapple", "Melon", "Watermelon"] #List with index corresponding to fruits
 # Dictionary with names as keys, values index 0 the size, second index a tuple of RGB values, 
@@ -42,6 +42,8 @@ class Fruit(pygame.sprite.Sprite): # class of the fruit, including its type, siz
         self.dx = 0
         self.dy = 0
         self.w = 0
+        self.x = x
+        self.y= y
         self.type = type
         self.radius = TYPES[type][0]
         self.mass = TYPES[type][3]
@@ -131,8 +133,9 @@ class Fruit(pygame.sprite.Sprite): # class of the fruit, including its type, siz
         if self.rect.bottom >= SCREEN_HEIGHT:
             self.rect.bottom = SCREEN_HEIGHT
             self.dy = 0 # Fix (maybe)
-        self.rect.move_ip(self.dx, self.dy)
-        self.rect.center = ((self.rect.right+self.rect.left)/2,(self.rect.top+self.rect.bottom)/2 )
+        self.x +=self.dx
+        self.y += self.dy
+        self.rect.center = (self.x,self.y)
 
         
 
@@ -176,5 +179,3 @@ while running:
         for fruit in FRUITS:
             screen.blit(fruit.surf, fruit.rect) 
     pygame.display.flip()
-
-
