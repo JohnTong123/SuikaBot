@@ -12,10 +12,11 @@ GAME_WIDTH = 400
 SCREEN_HEIGHT = 600
 GRAVITY = 0.005
 FRICTION = 0.001
+OFFSET = 100
 SKEWED_PROBABILITY = [0.35, 0.25, 0.15, 0.12, 0.08, 0.05]
 FRUITS = pygame.sprite.Group()
 game_joever = False
-score = 0 #
+score = 0 # Total score from merging fruits
 NAMES = ["Cherry", "Strawberry", "Grape", "Dekopon", "Orange", "Apple", 
          "Pear", "Peach", "Pineapple", "Melon", "Watermelon"] #List with index corresponding to fruits
 # Dictionary with names as keys, values index 0 the size, second index a tuple of RGB values, 
@@ -27,10 +28,10 @@ TYPES = {"Cherry":(10, (153,0,0), 0,1),
           "Orange":(35, (255,128,0), 4,5), 
           "Apple":(45, (255,51,51), 5,6), 
           "Pear":(60, (178,255,102), 6,7), 
-          "Peach":(80, (255,204,153), 7,8), 
-          "Pineapple":(90, (255,255,0), 8,9), 
-          "Melon":(110, (128,255,0), 9,10), 
-          "Watermelon":(130, (0,102,0), 10,11)
+          "Peach":(70, (255,204,153), 7,8), 
+          "Pineapple":(80, (255,255,0), 8,9), 
+          "Melon":(95, (128,255,0), 9,10), 
+          "Watermelon":(110, (0,102,0), 10,11)
           }
 SCORES = [0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55] # Scores for getting certain fruit
 
@@ -50,7 +51,6 @@ class Fruit(pygame.sprite.Sprite): # class of the fruit, including its type, siz
 
         self.color = TYPES[type][1]
         self.surf = pygame.Surface((self.radius*2, self.radius*2),pygame.SRCALPHA, 32)
-        self.offset = 100 #Offset pixels from the top of the screen when placing fruits
         self.timeAboveLine = 0
         pygame.draw.circle(self.surf, self.color, (self.radius, self.radius), self.radius) # could create non circular hitboxes, will have to see
         self.rect = self.surf.get_rect()
@@ -80,7 +80,12 @@ class Fruit(pygame.sprite.Sprite): # class of the fruit, including its type, siz
                                         (self.rect.center[0] + fruit.rect.center[0])/2, 
                                         (self.rect.center[1] + fruit.rect.center[1])/2) 
                     FRUITS.add(newFruit)
+                    global score
+                    score += SCORES[TYPES[self.type][2]+1]
                 else:
+                    if(math.sqrt((self.x-fruit.x)**2 + (self.y - fruit.y)**2)+3 <self.radius + fruit.radius):
+                        if(self.y<fruit.y):
+                            self.y -= ((self.radius + fruit.radius)-math.sqrt((self.x-fruit.x)**2 + (self.y - fruit.y)**2))* self.y/math.sqrt(self.y**2+self.x**2)
                     # hypotenuse = 
                     if self.rect.center[0] > fruit.rect.center[0]: # Self is on the right
                         # self.rect.left = fruit.rect.right
@@ -89,12 +94,12 @@ class Fruit(pygame.sprite.Sprite): # class of the fruit, including its type, siz
                     if self.rect.center[0] < fruit.rect.center[0]: # Self is on the left
                         # self.rect.right = fruit.rect.left
                         self.dx += -0.01 # Fix
-                    if (self.rect.center[1] > fruit.rect.center[1]): # Self is below
-                        # self.rect.top = fruit.rect.bottom
-                        self.dy += 0.005 # Fix
+                    # if (self.rect.center[1] > fruit.rect.center[1]): # Self is below
+                    #     # self.rect.top = fruit.rect.bottom
+                    #     self.dy = 0.005 # Fix
                     if (self.rect.center[1] < fruit.rect.center[1]): # Self is on top
                         # self.rect.bottom = fruit.rect.top
-                        self.dy = 0 # Fix
+                        self.dy = -0.005 # Fix
                     
                     # vel1 = math.sqrt(self.dx**2 + self.dy**2)
 
@@ -118,22 +123,25 @@ class Fruit(pygame.sprite.Sprite): # class of the fruit, including its type, siz
 
 
         if self.rect.left < 0: 
-            self.rect.left = 0
+            self.x = 0 + self.radius
             self.dx *= -1 # Fix
         if self.rect.right > GAME_WIDTH:
-            self.rect.right = GAME_WIDTH
+            self.x = GAME_WIDTH - self.radius
             self.dx *= -1 # Fix
-        if self.rect.center[1] < self.offset+10: # Fruit goes above loss line Fix
+        if self.rect.center[1] < OFFSET+10: # Fruit goes above loss line Fix
             self.timeAboveLine+=1
             if self.timeAboveLine > 600:
                 global game_joever
                 game_joever = True
         else:
             self.timeAboveLine = 0
-        if self.rect.bottom >= SCREEN_HEIGHT:
-            self.rect.bottom = SCREEN_HEIGHT
+        # if self.rect.bottom == SCREEN_HEIGHT:
+        #     self.rect.bottom = SCREEN_HEIGHT
+        #     self.dy = 0 # Fix (maybe)
+        if self.rect.center[1] + self.radius >= SCREEN_HEIGHT:
+            self.y = SCREEN_HEIGHT - self.radius
             self.dy = 0 # Fix (maybe)
-        self.x +=self.dx
+        self.x += self.dx
         self.y += self.dy
         self.rect.center = (self.x,self.y)
 
@@ -143,39 +151,68 @@ pygame.init()
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 clock = pygame.time.Clock()
-clock.tick(30)
+FRAME_RATE = 30
+clock.tick(FRAME_RATE)
 pygame.font.init()
 
 running = True
-
-nextFruitName = NAMES[random.choices(range(0,6),weights=SKEWED_PROBABILITY, k=1)[0]] # Weigh probabilities
+time = -1000
+queuedFruitName = NAMES[random.choices(range(0,6),weights=SKEWED_PROBABILITY, k=1)[0]] # Weigh probabilities
+nextFruitName = NAMES[random.choices(range(0,6),weights=SKEWED_PROBABILITY, k=1)[0]]
 while running:
     for event in pygame.event.get():
-        if event.type == MOUSEBUTTONUP and not game_joever: # Let go of mouse button
+        if event.type == MOUSEBUTTONUP and not game_joever and pygame.time.get_ticks() > time + 1000: # Let go of mouse button
+            time = pygame.time.get_ticks()
             # Add a new random fruit at the x position of the cursor
-            FRUITS.add(Fruit(nextFruitName, pygame.mouse.get_pos()[0]))
+            FRUITS.add(Fruit(queuedFruitName, pygame.mouse.get_pos()[0]))
+            queuedFruitName = nextFruitName
             nextFruitName = NAMES[random.choices(range(0,6),weights=SKEWED_PROBABILITY, k=1)[0]]
         elif event.type == QUIT:
             running = False
     if (game_joever):
         font = pygame.font.SysFont("Times New Roman", 50)
-        text_surface = font.render("Game Joever", False, (255, 255, 255))
-        text_rect = text_surface.get_rect(center=(GAME_WIDTH/2, SCREEN_HEIGHT/2))
+        game_joever_surface = font.render("Game Joever", False, (255, 255, 255))
+        game_joever_rect = game_joever_surface.get_rect(center=(SCREEN_WIDTH/2, SCREEN_HEIGHT/2))
+        score_surface = font.render("Score: " + str(score), False, (255, 255, 255))
+        score_rect = score_surface.get_rect(center=(SCREEN_WIDTH/2, SCREEN_HEIGHT/2 + 200))
         screen.fill((0, 0, 0))
-        screen.blit(text_surface, text_rect)
+        screen.blit(game_joever_surface, game_joever_rect)
+        screen.blit(score_surface, score_rect)
     else:
         screen.fill((0, 0, 0))
         screen.fill((255, 255, 255), (GAME_WIDTH, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
-        #Draw the next fruit
-        radius = TYPES[nextFruitName][0]
-        color = TYPES[nextFruitName][1]
+        # Make a line for GAME_JOEVER
+        screen.fill((255, 255, 255), (0, OFFSET, GAME_WIDTH, 10))
+        # Display the score
+        font = pygame.font.SysFont("Times New Roman", 30)
+        score_surface = font.render("Score: " + str(score), False, (0, 0, 0))
+        screen.blit(score_surface, (GAME_WIDTH + 10, 10))
+        # Draw the queued fruit
+        radius = TYPES[queuedFruitName][0]
+        color = TYPES[queuedFruitName][1]
         surf = pygame.Surface((radius*2, radius*2), pygame.SRCALPHA, 32)
-        pygame.draw.circle(surf, color, (radius, radius), radius) # could create non circular hitboxes, will have to see
+        pygame.draw.circle(surf, color, (radius, radius), radius)
         rect = surf.get_rect()
         rect.center = (GAME_WIDTH/2, 50)
         screen.blit(surf,rect)
+
+        # Draw the next fruit
+        radius = TYPES[nextFruitName][0]
+        color = TYPES[nextFruitName][1]
+        surf = pygame.Surface((radius*2, radius*2), pygame.SRCALPHA, 32)
+        pygame.draw.circle(surf, color, (radius, radius), radius)
+        rect = surf.get_rect()
+        rect.center = ((GAME_WIDTH + SCREEN_WIDTH)/2, 130)
+        screen.blit(surf,rect)
+
+        # Draw word next
+        font = pygame.font.SysFont("Times New Roman", 20)
+        next_surface = font.render("Next", False, (0, 0, 0))
+        next_rect = next_surface.get_rect(center=((GAME_WIDTH + SCREEN_WIDTH)/2, 70))
+        screen.blit(next_surface, next_rect)
+
         FRUITS.update() # Update every fruit
         # FRUITS.draw(screen)
         for fruit in FRUITS:
-            screen.blit(fruit.surf, fruit.rect) 
+            screen.blit(fruit.surf, fruit.rect)
     pygame.display.flip()
