@@ -11,9 +11,9 @@ SCREEN_WIDTH = 600
 GAME_WIDTH = 400
 SCREEN_HEIGHT = 600
 GRAVITY = 0.005
-FRICTION = 0.01
-XLOSS  = 0.05
-YLOSS = 0.05
+FRICTION = 0.05
+XLOSS  = 0.00
+YLOSS = 0.00
 OFFSET = 100
 SKEWED_PROBABILITY = [0.35, 0.25, 0.15, 0.12, 0.08, 0.05]
 FRUITS = pygame.sprite.Group()
@@ -64,8 +64,8 @@ class Fruit(pygame.sprite.Sprite): # class of the fruit, including its type, siz
     def update(self): # Update position, velocity
         # pygame.draw.circle(self.surf, self.color, (self.rect.center[0], self.rect.center[1]), self.radius) # could create non circular hitboxes, will have to see
         self.dy += GRAVITY
-
-        self.dx = (1-FRICTION)*self.dx
+        if(self.y + self.radius >= SCREEN_HEIGHT):
+            self.dx = (1-FRICTION)*self.dx
         collidedFruits = []
         for fruit in FRUITS:
             if fruit != self and pygame.sprite.collide_circle(self, fruit):
