@@ -11,7 +11,9 @@ SCREEN_WIDTH = 600
 GAME_WIDTH = 400
 SCREEN_HEIGHT = 600
 GRAVITY = 0.005
-FRICTION = 0.001
+FRICTION = 0.01
+XLOSS  = 0.05
+YLOSS = 0.05
 OFFSET = 100
 SKEWED_PROBABILITY = [0.35, 0.25, 0.15, 0.12, 0.08, 0.05]
 FRUITS = pygame.sprite.Group()
@@ -22,16 +24,16 @@ NAMES = ["Cherry", "Strawberry", "Grape", "Dekopon", "Orange", "Apple",
 # Dictionary with names as keys, values index 0 the size, second index a tuple of RGB values, 
 # and the last index the index which the fruit corresponds to in the above array
 TYPES = {"Cherry":(10, (153,0,0), 0,1), 
-          "Strawberry":(15, (255,0,0), 1,2), 
-          "Grape":(20, (127,0,255), 2,3), 
-          "Dekopon":(25, (255,255,51), 3,4), 
-          "Orange":(35, (255,128,0), 4,5), 
-          "Apple":(45, (255,51,51), 5,6), 
-          "Pear":(60, (178,255,102), 6,7), 
-          "Peach":(70, (255,204,153), 7,8), 
-          "Pineapple":(80, (255,255,0), 8,9), 
-          "Melon":(95, (128,255,0), 9,10), 
-          "Watermelon":(110, (0,102,0), 10,11)
+          "Strawberry":(15, (255,0,0), 1,1.25), 
+          "Grape":(20, (127,0,255), 2,2), 
+          "Dekopon":(25, (255,255,51), 3,3), 
+          "Orange":(35, (255,128,0), 4,4), 
+          "Apple":(45, (255,51,51), 5,5), 
+          "Pear":(60, (178,255,102), 6,6), 
+          "Peach":(70, (255,204,153), 7,7), 
+          "Pineapple":(80, (255,255,0), 8,8), 
+          "Melon":(95, (128,255,0), 9,3.9), 
+          "Watermelon":(110, (0,102,0), 10,10)
           }
 SCORES = [0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55] # Scores for getting certain fruit
 
@@ -45,6 +47,8 @@ class Fruit(pygame.sprite.Sprite): # class of the fruit, including its type, siz
         self.w = 0
         self.x = x
         self.y= y
+        self.pastdx = 0
+        self.pastdy = 0
         self.type = type
         self.radius = TYPES[type][0]
         self.mass = TYPES[type][3]
@@ -59,17 +63,18 @@ class Fruit(pygame.sprite.Sprite): # class of the fruit, including its type, siz
         
     def update(self): # Update position, velocity
         # pygame.draw.circle(self.surf, self.color, (self.rect.center[0], self.rect.center[1]), self.radius) # could create non circular hitboxes, will have to see
-
         self.dy += GRAVITY
-        if self.dx > 0:
-            self.dx -= FRICTION
-        elif self.dx < 0:
-            self.dx += FRICTION
+
+        self.dx = (1-FRICTION)*self.dx
         collidedFruits = []
         for fruit in FRUITS:
             if fruit != self and pygame.sprite.collide_circle(self, fruit):
                 collidedFruits.append(fruit)
         if len(collidedFruits) > 0:
+            self.pastdx = self.dx
+            self.pastdy = self.dy
+            self.dx=0
+            self.dy=0
             for fruit in collidedFruits:
                 if self.type == fruit.type:
                     FRUITS.remove(self)
@@ -86,48 +91,55 @@ class Fruit(pygame.sprite.Sprite): # class of the fruit, including its type, siz
                     if(math.sqrt((self.x-fruit.x)**2 + (self.y - fruit.y)**2)+3 <self.radius + fruit.radius):
                         if(self.y<fruit.y):
                             self.y -= ((self.radius + fruit.radius)-math.sqrt((self.x-fruit.x)**2 + (self.y - fruit.y)**2))* self.y/math.sqrt(self.y**2+self.x**2)
-                    # hypotenuse = 
-                    if self.rect.center[0] > fruit.rect.center[0]: # Self is on the right
-                        # self.rect.left = fruit.rect.right
-                        self.dx += 0.01 # Fix
-                        # self.dx += self.dx*math.sin()
-                    if self.rect.center[0] < fruit.rect.center[0]: # Self is on the left
-                        # self.rect.right = fruit.rect.left
-                        self.dx += -0.01 # Fix
-                    # if (self.rect.center[1] > fruit.rect.center[1]): # Self is below
-                    #     # self.rect.top = fruit.rect.bottom
-                    #     self.dy = 0.005 # Fix
-                    if (self.rect.center[1] < fruit.rect.center[1]): # Self is on top
-                        # self.rect.bottom = fruit.rect.top
-                        self.dy = -0.005 # Fix
-                    
-                    # vel1 = math.sqrt(self.dx**2 + self.dy**2)
+                    # # hypotenuse = 
+                    # if self.rect.center[0] > fruit.rect.center[0]: # Self is on the right
+                    #     # self.rect.left = fruit.rect.right
+                    #     self.dx += 0.01 # Fix
+                    #     # self.dx += self.dx*math.sin()
+                    # if self.rect.center[0] < fruit.rect.center[0]: # Self is on the left
+                    #     # self.rect.right = fruit.rect.left
+                    #     self.dx += -0.01 # Fix
+                    # # if (self.rect.center[1] > fruit.rect.center[1]): # Self is below
+                    # #     # self.rect.top = fruit.rect.bottom
+                    # #     self.dy = 0.005 # Fix
+                    # if (self.rect.center[1] < fruit.rect.center[1]): # Self is on top
+                    #     # self.rect.bottom = fruit.rect.top
+                    #     self.dy = -0.005 # Fix
+                    vel1 = math.sqrt(self.pastdx**2 + self.pastdy**2)
 
-                    # vel2 = math.sqrt(fruit.dx**2 + fruit.dy**2)
-                    # ctheta1 = 0
-                    # stheta2=0
-                    # ctheta2=0
-                    # ctheta1=0
-                    # if(vel1 != 0):
-                    #     ctheta1 = self.dx /(math.sqrt(self.dx**2 +self.dy**2))
-                    #     stheta1 = -self.dy /(math.sqrt(self.dx**2 +self.dy**2))
-                    # if(vel2 != 0):
-                    #     ctheta2 = fruit.dx /(math.sqrt(fruit.dx**2 +fruit.dy**2))
-                    #     stheta2 = -fruit.dy /(math.sqrt(fruit.dx**2 +fruit.dy**2))
-                    # ccontact = ((fruit.rect.center[0]-self.rect.center[0]) /math.sqrt((fruit.rect.center[0]-self.rect.center[0])**2 + (fruit.rect.center[1]-self.rect.center[1])**2))
-                    # scontact = ((fruit.rect.center[1]-self.rect.center[1] )/math.sqrt((fruit.rect.center[0]-self.rect.center[0])**2 + (fruit.rect.center[1]-self.rect.center[1])**2))
+                    vel2 = math.sqrt(fruit.pastdx**2 + fruit.pastdy**2)
+                    ctheta1 = 0
+                    stheta2=0
+                    ctheta2=0
+                    stheta1=0
+                    if(vel1 != 0):
+                        ctheta1 = self.pastdx /vel1
+                        stheta1 = self.pastdy /vel1
+                    if(vel2 != 0):
+                        ctheta2 = fruit.pastdx /vel2
+                        stheta2 = fruit.pastdy /vel2
+                    ccontact = ((fruit.x-self.x) /math.sqrt((fruit.x-self.x)**2 + (fruit.y-self.y)**2))
+                    scontact = ((fruit.y-self.y )/math.sqrt((fruit.x-self.x)**2 + (fruit.y-self.y)**2))
+                    if(self.x > fruit.x):
+                        self.dx+= abs((1-XLOSS) * ((vel1* (ctheta1 * ccontact + stheta1 * scontact)* (self.mass - fruit.mass) + 2* fruit.mass * vel2 * (ctheta2 * ccontact + stheta2 * scontact))/(self.mass + fruit.mass)*ccontact+vel1 * (stheta1 * ctheta2 - ctheta1 * stheta2)*(-scontact)))
+                    else:
+                        self.dx-= abs((1-XLOSS) * ((vel1* (ctheta1 * ccontact + stheta1 * scontact)* (self.mass - fruit.mass) + 2* fruit.mass * vel2 * (ctheta2 * ccontact + stheta2 * scontact))/(self.mass + fruit.mass)*ccontact+vel1 * (stheta1 * ctheta2 - ctheta1 * stheta2)*(-scontact)))
+                    if(self.y > fruit.y):
+                        self.dy+=abs((1-YLOSS)*((vel1* (ctheta1 * ccontact + stheta1 * scontact)* (self.mass - fruit.mass) + 2* fruit.mass * vel2 * (ctheta2 * ccontact + stheta2 * scontact))/(self.mass + fruit.mass)*scontact+vel1 * (stheta1 * ctheta2 - ctheta1 * stheta2)*(ccontact)))
+                    else:
+                        self.dy-=abs((1-YLOSS)*((vel1* (ctheta1 * ccontact + stheta1 * scontact)* (self.mass - fruit.mass) + 2* fruit.mass * vel2 * (ctheta2 * ccontact + stheta2 * scontact))/(self.mass + fruit.mass)*scontact+vel1 * (stheta1 * ctheta2 - ctheta1 * stheta2)*(ccontact)))
 
-                    # self.dx+=(vel1* (ctheta1 * ccontact + stheta1 * scontact)* (self.mass - fruit.mass) + 2* fruit.mass * vel2 * (ctheta2 * ccontact + stheta2 * scontact))/(self.mass + fruit.mass)*ccontact+vel1 * (stheta1 * ctheta2 - ctheta1 * stheta2)*(-scontact)
-                    # self.dy+=(vel1* (ctheta1 * ccontact + stheta1 * scontact)* (self.mass - fruit.mass) + 2* fruit.mass * vel2 * (ctheta2 * ccontact + stheta2 * scontact))/(self.mass + fruit.mass)*scontact+vel1 * (stheta1 * ctheta2 - ctheta1 * stheta2)*(ccontact)
-
+                    print(self.radius)
+                    print(self.dx)
+                    print(self.dy)
 
 
         if self.rect.left < 0: 
             self.x = 0 + self.radius
-            self.dx *= -1 # Fix
+            self.dx *= -0.8 # Fix
         if self.rect.right > GAME_WIDTH:
             self.x = GAME_WIDTH - self.radius
-            self.dx *= -1 # Fix
+            self.dx *= -0.8 # Fix
         if self.rect.center[1] < OFFSET+10: # Fruit goes above loss line Fix
             self.timeAboveLine+=1
             if self.timeAboveLine > 600:
