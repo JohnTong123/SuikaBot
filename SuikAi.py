@@ -2,6 +2,8 @@ import torch
 import random
 import numpy as np
 from collections import deque
+# from Suika_Simulation import Game, FRUITS, TYPES, NAMES
+
 from Suika_Simulation import Game, FRUITS, TYPES, NAMES
 from SuikAimodel import Linear_QNet, QTrainer
 import pygame
@@ -25,44 +27,45 @@ class Agent:
         self.epsilon = 0 # randomness
         self.gamma = 0.9 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY) # popleft()
-        self.model = Linear_QNet(4, 256, 81) #81 outputs 11 inputs
+        self.model = Linear_QNet(6, 256, 81) #81 outputs 11 inputs
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
-    def dfs(self, points, value, x, y):
-        small = 0
+    def dfs(self,points, value, x, y,depth):
         for i in range(0,len(points[value-1])):
-            dist = abs(x - points[value-1][i][0])  + abs(y - points[value-1][i][1]) - TYPES[NAMES[value]][0] - TYPES[NAMES[value-1]][0]
+            dist = ((x - points[value-1][i][0])**2  + abs(y - points[value-1][i][1])**2)**0.5 - TYPES[NAMES[value]][0] - TYPES[NAMES[value-1]][0]
             if value==1 and dist < 10:
-                return 1
+                return depth
             elif value ==1:
                 return 0
             elif dist<10:
-                small = max(small , self.dfs(points,value-1,points[value-1][i][0],points[value-1][i][1]))
-        return 1 + small
-    
+                depth =  self.dfs(points,value-1,points[value-1][i][0],points[value-1][i][1], depth + 1)
+        return depth
     def get_state(self, game):
         points =  [[], [], [], [], [], [], [], [], [], [], []]
-        fruitHeight = 600
+        fruitHeight = 0
         bigCorner = 0
         fruitStack = 1
         beegfruit = 0
+        depth = 0
         for fruit in FRUITS:
             type = TYPES[fruit.type][2]
-            fruitHeight = min (fruit.y+ fruit.radius ,fruitHeight )
+            fruitHeight = max (fruit.fruitBody.position[1]+fruit.radius ,fruitHeight )
             if(beegfruit < type):
                 beegfruit = type
-                bigCorner = abs(600-fruit.radius - fruit.y )+  min(abs(400-fruit.radius - fruit.x ),abs(0-fruit.radius - fruit.x ))<=10
+                bigCorner = abs(-fruit.radius + fruit.fruitBody.position[1] )+  min(abs(400-fruit.radius - fruit.fruitBody.position[0] ),abs(0-fruit.radius + fruit.fruitBody.position[0] ))<=10
             elif(beegfruit == type):
                 if(not bigCorner):
-                    bigCorner = abs(600-fruit.radius - fruit.y )+  min(abs(400-fruit.radius - fruit.x ),abs(0-fruit.radius - fruit.x ))<=10
-            points[type].append((fruit.x,fruit.y))
+                    bigCorner = abs(-fruit.radius +fruit.fruitBody.position[1] )+  min(abs(400-fruit.radius - fruit.fruitBody.position[0]),abs(0-fruit.radius - fruit.fruitBody.position[0]))<=10
+            points[type].append((fruit.fruitBody.position[0],fruit.fruitBody.position[1]))
         for x, y in points[beegfruit]:
-            fruitStack = max(fruitStack, self.dfs(points, beegfruit, x, y))
+            fruitStack = max(fruitStack, self.dfs(points, beegfruit, x, y,depth))
         state = [
             game.score,
             fruitHeight,
             bigCorner,
-            fruitStack
+            fruitStack,
+            TYPES[game.nextFruitName][2],
+            TYPES[game.queuedFruitName][2]            
             ]
 
         return np.array(state, dtype=int)
@@ -115,7 +118,7 @@ def train():
                 quit = True
         if quit:
             break
-        if not game.game_joever and pygame.time.get_ticks() > time + 850:
+        if not game.game_joever and pygame.time.get_ticks() > time + 1350:
             time = pygame.time.get_ticks()
             # get old state
             state_old = agent.get_state(game)
@@ -126,9 +129,9 @@ def train():
 
             if position == 0:
                 position = -1
-                time -= 850
+                time -= 1350
             else:
-                position *= 5
+                position = (position-1) * 5
             # perform move and get new state
             old_score = game.score
             game.update(position)
@@ -144,6 +147,7 @@ def train():
             agent.remember(state_old, final_move, reward, state_new, done)
         elif game.game_joever:
             # train long memory, plot result
+            reward = -1e9
             game.reset()
             agent.n_games += 1
             agent.train_long_memory()

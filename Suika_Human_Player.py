@@ -1,4 +1,4 @@
-from Suika_Simulation import Game
+from Suika_Simulation import Game, GAME_WIDTH
 import pygame
 
 pygame.init()
@@ -17,6 +17,8 @@ while True:
         if event.type == MOUSEBUTTONUP and not game.game_joever and pygame.time.get_ticks() > time + 850: # Let go of mouse button
             time = pygame.time.get_ticks()
             position = pygame.mouse.get_pos()[0]
+            if position > GAME_WIDTH:
+                position = GAME_WIDTH-1
         elif event.type == QUIT:
             game.game_joever = True
             quit = True
