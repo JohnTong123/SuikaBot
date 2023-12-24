@@ -2,6 +2,7 @@ import torch
 import random
 import numpy as np
 from collections import deque
+from queue import PriorityQueue
 # from Suika_Simulation import Game, FRUITS, TYPES, NAMES
 
 from Suika_Simulation import Game, FRUITS, TYPES, NAMES
@@ -27,7 +28,7 @@ class Agent:
         self.epsilon = 0 # randomness
         self.gamma = 0.9 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY) # popleft()
-        self.model = Linear_QNet(6, 256, 81) #81 outputs 11 inputs
+        self.model = Linear_QNet(160, 512,256,128, 81) #81 outputs 11 inputs
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
     def dfs(self,points, value, x, y,depth):
@@ -41,6 +42,9 @@ class Agent:
                 depth =  self.dfs(points,value-1,points[value-1][i][0],points[value-1][i][1], depth + 1)
         return depth
     def get_state(self, game):
+        topPoints = PriorityQueue()
+        for i in range(0,50):
+            topPoints.put((0,0,0,0))
         points =  [[], [], [], [], [], [], [], [], [], [], []]
         fruitHeight = 0
         bigCorner = 0
@@ -57,17 +61,33 @@ class Agent:
                 if(not bigCorner):
                     bigCorner = abs(-fruit.radius +fruit.fruitBody.position[1] )+  min(abs(400-fruit.radius - fruit.fruitBody.position[0]),abs(0-fruit.radius - fruit.fruitBody.position[0]))<=10
             points[type].append((fruit.fruitBody.position[0],fruit.fruitBody.position[1]))
+            peek =topPoints.get()
+            if(fruit.radius + fruit.fruitBody.position[1] > peek[0]):
+                topPoints.put((fruit.radius + fruit.fruitBody.position[1], type, fruit.fruitBody.position[0], fruit.fruitBody.position[1]))
+            else:
+                topPoints.put(peek)
+                
+
         for x, y in points[beegfruit]:
             fruitStack = max(fruitStack, self.dfs(points, beegfruit, x, y,depth))
+        
         state = [
             game.score,
             fruitHeight,
             bigCorner,
             fruitStack,
             TYPES[game.nextFruitName][2],
-            TYPES[game.queuedFruitName][2]            
+            TYPES[game.queuedFruitName][2],  
+            len(points[0]),
+            len(points[1]),
+            len(points[2]),  
+            len(points[3])       
             ]
-
+        while(not topPoints.empty()):
+            peek = topPoints.get()
+            state.append(peek[1])
+            state.append(peek[2])
+            state.append(peek[3])
         return np.array(state, dtype=int)
 
     def remember(self, state, action, reward, next_state, done):
@@ -137,6 +157,7 @@ def train():
             game.update(position)
             score = game.score
             reward = score - old_score
+            reward = reward 
             state_new = agent.get_state(game)
             done = game.game_joever
 
