@@ -6,6 +6,7 @@ from queue import PriorityQueue
 # from Suika_Simulation import Game, FRUITS, TYPES, NAMES
 
 from Suika_Simulation import Game, FRUITS, TYPES, NAMES
+import Suika_Simulation
 from SuikAimodel import Linear_QNet, QTrainer
 import pygame
 from helper import plot #prolly need a plot or smth idk
@@ -155,8 +156,9 @@ def train():
                 quit = True
         if quit:
             break
-        if not game.game_joever and pygame.time.get_ticks() > time + 1350:
-            time = pygame.time.get_ticks()
+        # print(Suika_Simulation.canPlace)
+        if not game.game_joever and Suika_Simulation.canPlace:
+            # time = pygame.time.get_ticks()
             # get old state
             state_old = agent.get_state(game)
 
@@ -166,9 +168,11 @@ def train():
 
             if position == 0:
                 position = -1
-                time -= 1350
+                # time -= 1350
             else:
                 position = (position-1) * 1
+                Suika_Simulation.canPlace = False
+                print("test")
             # perform move and get new state
             old_score = game.score
             game.update(position)

@@ -8,23 +8,25 @@ from pygame.locals import (
 )
 pygame.init()
 clock = pygame.time.Clock()
-FRAME_RATE = 100000000000
+FRAME_RATE = 30
 clock.tick(FRAME_RATE)
 
 SCREEN_WIDTH = 600
 GAME_WIDTH = 400
 SCREEN_HEIGHT = 600
 GRAVITY = 0.05
-FRICTION = 0.05
+FRICTION = 50
+FRUITFRICTION = 0.9
 XLOSS  = 0.00
 YLOSS = 0.00
 OFFSET = 100
-SKEWED_PROBABILITY = [0.2, 0.2, 0.2, 0.2, 0.2, 0.00]
-# SKEWED_PROBABILITY = [1.0, 0.0, 0.0, 0.0, 0.0, 0.00]
+SKEWED_PROBABILITY = [0.2, 0.2, 0.2, 0.2, 0.2]
+# SKEWED_PROBABILITY = [1.0, 0.0, 0.0, 0.0, 0.0]
 # FRUITS = pygame.sprite.Group()
 
 space = pymunk.Space()
 space.gravity = 0.0, -10.0
+canPlace = True
 
 FRUITS = []
 
@@ -52,10 +54,17 @@ def flipY(y):
 
 def checkCollision(arbiter, space, data):
     f1, f2 = arbiter.shapes
+    global canPlace
     if f1.justPlaced:
         f1.justPlaced=False
+        if not canPlace:
+            print("test1")
+            canPlace = True
     if f2.justPlaced:
         f2.justPlaced=False
+        if not canPlace:
+            print("test2")
+            canPlace = True
     if f1.type == f2.type:
         # FRUITS.remove(f1)
         # FRUITS.remove(f2)
@@ -73,12 +82,14 @@ def checkCollision(arbiter, space, data):
                 FRUITS.remove(f2)
             # Makes a new fruit the next level up
             
-            newBody = pymunk.Body(TYPES[NAMES[(TYPES[f1.type][2]+1)%11]][3], 100)
+            newBody = pymunk.Body(TYPES[NAMES[(TYPES[f1.type][2]+1)%11]][3], TYPES[NAMES[(TYPES[f1.type][2]+1)%11]][3] * 10)
             newBody.position = ((f1.fruitBody.position[0] + f2.fruitBody.position[0])/2, 
             (f1.fruitBody.position[1] + f2.fruitBody.position[1])/2)
             newFruit = Fruit(newBody, NAMES[(TYPES[f1.type][2]+1)%11], newBody.position[0], flipY(newBody.position[1]))
-            newFruit.friction = 0.9
+            newFruit.friction = FRUITFRICTION
             newFruit.collision_type = 2
+            newFruit.justPlaced = False
+
             space.add(newBody, newFruit)
             FRUITS.append(newFruit)
             # FRUITS.add(newFruit)
@@ -87,6 +98,16 @@ def checkCollision(arbiter, space, data):
             global pseudoscore
             pseudoscore+=SCORES[(TYPES[f1.type][2]+1)%11] - 2*0
 
+    return True
+
+def checkSegmentCollision(arbiter, space, data):
+    f1, f2 = arbiter.shapes
+    global canPlace
+    if f2.justPlaced == True:
+        f2.justPlaced=False
+        if not canPlace:
+            print("test3")
+            canPlace = True
     return True
 
 class Fruit(pymunk.Circle): # class of the fruit, including its type, size, vertical and horizontal velocity, x,y pos and angular velocity denoted as w
@@ -145,7 +166,6 @@ class Fruit(pymunk.Circle): # class of the fruit, including its type, size, vert
         #                 FRUITS.add(newFruit)
         #                 global score
         #                 score += SCORES[TYPES[self.type][2]+1]
-
 
         #         else:
         #             # if(math.sqrt((self.x-fruit.x)**2 + (self.y - fruit.y)**2)+3 <self.radius + fruit.radius):
@@ -215,6 +235,7 @@ class Fruit(pymunk.Circle): # class of the fruit, including its type, size, vert
                 self.game_joever = True
         else:
             self.justPlaced = False
+                
         # # if self.rect.bottom == SCREEN_HEIGHT:
         # #     self.rect.bottom = SCREEN_HEIGHT
         # #     self.dy = 0 # Fix (maybe)
@@ -227,37 +248,41 @@ class Fruit(pymunk.Circle): # class of the fruit, including its type, size, vert
         self.rect.center = self.fruitBody.position[0], flipY(self.fruitBody.position[1])
 
 space.add_collision_handler(2, 2).pre_solve = checkCollision
+space.add_collision_handler(1, 2).pre_solve = checkSegmentCollision
 
 class Game:
     def __init__(self):
 
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.font.init()
-        self.queuedFruitName = NAMES[random.choices(range(0,6), weights = SKEWED_PROBABILITY, k = 1)[0]] # Weigh probabilities
-        self.nextFruitName = NAMES[random.choices(range(0,6), weights = SKEWED_PROBABILITY, k = 1)[0]]
+        self.queuedFruitName = NAMES[random.choices(range(0,5), weights = SKEWED_PROBABILITY, k = 1)[0]] # Weigh probabilities
+        self.nextFruitName = NAMES[random.choices(range(0,5), weights = SKEWED_PROBABILITY, k = 1)[0]]
         self.score = 0
         self.pseudoscore = 0
         self.game_joever = False
         shape = pymunk.Segment(
             space.static_body, Vec2d(0, SCREEN_HEIGHT), Vec2d(0, 0), 0.0
         )
-        shape.friction = 0.99
+        shape.friction = FRICTION
+        # shape.collision_type = 1
         space.add(shape)
 
         shape = pymunk.Segment(
             space.static_body, Vec2d(0, 0), Vec2d(GAME_WIDTH, 0), 0.0
         )
-        shape.friction = 0.99
+        shape.friction = FRICTION
+        shape.collision_type = 1
         space.add(shape)
         shape = pymunk.Segment(
             space.static_body, Vec2d(GAME_WIDTH, SCREEN_HEIGHT), Vec2d(GAME_WIDTH, 0), 0.0
         )
-        shape.friction = 0.99
+        shape.friction = FRICTION
+        # shape.collision_type = 1
         space.add(shape)
     
     def reset(self):
-        self.queuedFruitName = NAMES[random.choices(range(0,6), weights = SKEWED_PROBABILITY, k = 1)[0]] # Weigh probabilities
-        self.nextFruitName = NAMES[random.choices(range(0,6), weights = SKEWED_PROBABILITY, k = 1)[0]]
+        self.queuedFruitName = NAMES[random.choices(range(0,5), weights = SKEWED_PROBABILITY, k = 1)[0]] # Weigh probabilities
+        self.nextFruitName = NAMES[random.choices(range(0,5), weights = SKEWED_PROBABILITY, k = 1)[0]]
         self.score = 0
         self.pseudoscore = 0
         self.game_joever = False
@@ -269,19 +294,23 @@ class Game:
         shape = pymunk.Segment(
             space.static_body, Vec2d(0, SCREEN_HEIGHT), Vec2d(0, 0), 0.0
         )
-        shape.friction = 0.99
+        shape.friction = FRICTION
+        # shape.collision_type = 1
         space.add(shape)
 
         shape = pymunk.Segment(
             space.static_body, Vec2d(0, 0), Vec2d(GAME_WIDTH, 0), 0.0
         )
-        shape.friction = 0.99
+        shape.friction = FRICTION
+        shape.collision_type = 1
         space.add(shape)
         shape = pymunk.Segment(
             space.static_body, Vec2d(GAME_WIDTH, SCREEN_HEIGHT), Vec2d(GAME_WIDTH, 0), 0.0
         )
-        shape.friction = 0.99
+        shape.friction = FRICTION
+        # shape.collision_type = 1
         space.add(shape)
+        space.add_collision_handler(1, 2).pre_solve = checkSegmentCollision
         space.add_collision_handler(2, 2).pre_solve = checkCollision
         
         global score
@@ -290,6 +319,9 @@ class Game:
         global pseudoscore
         pseudoscore = 0
 
+        global canPlace
+        canPlace = True
+
         while FRUITS:
             FRUITS.pop()
 
@@ -297,16 +329,16 @@ class Game:
         # clock.tick(FRAME_RATE)
         if (not self.game_joever):
             if position != -1:
-                body = pymunk.Body(TYPES[self.queuedFruitName][3], 100)
+                body = pymunk.Body(TYPES[self.queuedFruitName][3], TYPES[self.queuedFruitName][3]*10)
                 body.position = position, 20 + flipY(100)
                 fruit = Fruit(body, self.queuedFruitName, position)
-                fruit.friction = 0.9
+                fruit.friction = FRUITFRICTION
                 fruit.collision_type = 2
                 space.add(body, fruit)
                 FRUITS.append(fruit)
                 # FRUITS.add(fruit)
                 self.queuedFruitName = self.nextFruitName
-                self.nextFruitName = NAMES[random.choices(range(0,6), weights=SKEWED_PROBABILITY, k=1)[0]]
+                self.nextFruitName = NAMES[random.choices(range(0,5), weights=SKEWED_PROBABILITY, k=1)[0]]
 
             self.screen.fill((0, 0, 0))
             self.screen.fill((255, 255, 255), (GAME_WIDTH, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -350,8 +382,8 @@ class Game:
                 if fruit.rect.center[1] - fruit.radius < OFFSET+10 :
                     if not fruit.justPlaced:
                         self.game_joever = True
-                else:
-                    fruit.justPlaced = False
+                # else:
+                #     fruit.justPlaced = False
             dt = 1.0 / 30.0
             for x in range(1):
                 space.step(dt)
@@ -370,9 +402,9 @@ class Game:
             self.screen.fill((0, 0, 0))
             self.screen.blit(game_joever_surface, game_joever_rect)
             self.screen.blit(score_surface, score_rect)  
-        for event in pygame.event.get():
-            if event.type == MOUSEBUTTONDOWN:
-                pygame.display.flip()
+        # for event in pygame.event.get():
+        #     if event.type == MOUSEBUTTONDOWN:
+        pygame.display.flip()
         # print(clock.get_fps())
 
 
