@@ -2,26 +2,29 @@ import pygame
 import random
 import pymunk
 from pymunk import Vec2d
-
+from pygame.locals import (
+    MOUSEBUTTONDOWN,
+    QUIT,
+)
 pygame.init()
 clock = pygame.time.Clock()
-FRAME_RATE = 100000
+FRAME_RATE = 100000000000
 clock.tick(FRAME_RATE)
 
 SCREEN_WIDTH = 600
 GAME_WIDTH = 400
 SCREEN_HEIGHT = 600
-GRAVITY = 0.005
+GRAVITY = 0.05
 FRICTION = 0.05
 XLOSS  = 0.00
 YLOSS = 0.00
 OFFSET = 100
-# SKEWED_PROBABILITY = [0.2, 0.2, 0.2, 0.2, 0.2, 0.00]
-SKEWED_PROBABILITY = [1.0, 0.0, 0.0, 0.0, 0.0, 0.00]
+SKEWED_PROBABILITY = [0.2, 0.2, 0.2, 0.2, 0.2, 0.00]
+# SKEWED_PROBABILITY = [1.0, 0.0, 0.0, 0.0, 0.0, 0.00]
 # FRUITS = pygame.sprite.Group()
 
 space = pymunk.Space()
-space.gravity = 0.0, -5.0
+space.gravity = 0.0, -10.0
 
 FRUITS = []
 
@@ -227,6 +230,7 @@ space.add_collision_handler(2, 2).pre_solve = checkCollision
 
 class Game:
     def __init__(self):
+
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.font.init()
         self.queuedFruitName = NAMES[random.choices(range(0,6), weights = SKEWED_PROBABILITY, k = 1)[0]] # Weigh probabilities
@@ -289,7 +293,8 @@ class Game:
         while FRUITS:
             FRUITS.pop()
 
-    def update(self, position):
+    def update(self, position):       
+        # clock.tick(FRAME_RATE)
         if (not self.game_joever):
             if position != -1:
                 body = pymunk.Body(TYPES[self.queuedFruitName][3], 100)
@@ -355,7 +360,8 @@ class Game:
             # FRUITS.draw(screen)
             for fruit in FRUITS:
                 self.screen.blit(fruit.surf, fruit.rect)
-        else: # Game (j)o(e)ver
+        # else: # Game (j)o(e)ver
+        elif (self.game_joever):
             font = pygame.font.SysFont("Times New Roman", 50)
             game_joever_surface = font.render("Game Joever", False, (255, 255, 255))
             game_joever_rect = game_joever_surface.get_rect(center=(SCREEN_WIDTH/2, SCREEN_HEIGHT/2))
@@ -364,7 +370,10 @@ class Game:
             self.screen.fill((0, 0, 0))
             self.screen.blit(game_joever_surface, game_joever_rect)
             self.screen.blit(score_surface, score_rect)  
-        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type == MOUSEBUTTONDOWN:
+                pygame.display.flip()
+        # print(clock.get_fps())
 
 
 pygame.quit()
