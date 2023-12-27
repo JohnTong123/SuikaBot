@@ -30,7 +30,7 @@ class Agent:
 
     def __init__(self):
         self.n_games = 0
-        self.epsilon = 0.995 # randomness
+        self.epsilon = 1.0 # randomness
         self.gamma = 0.95 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY) # popleft()
         self.model = Linear_QNet(402, 512,256,4) #81 outputs 11 inputs
@@ -137,9 +137,13 @@ class Agent:
         if np.random.random() < self.epsilon:
             x  = random.randint(0, 3)
             final_move[x] = 1
+            if x ==3:
+                x  = random.randint(0, 2)
+                final_move[x] = 0.5
             return final_move
         state0 = torch.tensor(state, dtype=torch.float)
         prediction = self.model(state0)
+        # print(prediction)
         # move = torch.argmax(prediction).item()
         
         # final_move[move] = 1
