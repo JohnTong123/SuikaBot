@@ -5,15 +5,19 @@ from collections import deque
 from queue import PriorityQueue
 # from Suika_Simulation import Game, FRUITS, TYPES, NAMES
 
-from Suika_Simulation import Game, FRUITS, TYPES, NAMES
+from Suika_Simulation import Game, FRUITS, TYPES, NAMES, GAME_WIDTH
 import Suika_Simulation
 from SuikAimodel import Linear_QNet, QTrainer
 import pygame
 from helper import plot #prolly need a plot or smth idk
 
-MAX_MEMORY = 100_000
-BATCH_SIZE = 1000
-LR = 0.0001
+# MAX_MEMORY = 100_000
+MAX_MEMORY = 10000
+# BATCH_SIZE = 1000
+BATCH_SIZE = 32
+
+LR = 0.005
+K = 4
 
 from pygame.locals import (
     QUIT,
@@ -26,42 +30,42 @@ class Agent:
 
     def __init__(self):
         self.n_games = 0
-        self.epsilon = 0 # randomness
+        self.epsilon = 0.995 # randomness
         self.gamma = 0.95 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY) # popleft()
-        self.model = Linear_QNet(406, 512,256,401) #81 outputs 11 inputs
+        self.model = Linear_QNet(402, 512,256,4) #81 outputs 11 inputs
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
-    def dfs(self,points, value, x, y,depth):
-        for i in range(0,len(points[value-1])):
-            dist = ((x - points[value-1][i][0])**2  + abs(y - points[value-1][i][1])**2)**0.5 - TYPES[NAMES[value]][0] - TYPES[NAMES[value-1]][0]
-            if value==1 and dist < 10:
-                return depth
-            elif value ==1:
-                return 0
-            elif dist<10:
-                depth =  self.dfs(points,value-1,points[value-1][i][0],points[value-1][i][1], depth + 1)
-        return depth
+    # def dfs(self,points, value, x, y,depth):
+    #     for i in range(0,len(points[value-1])):
+    #         dist = ((x - points[value-1][i][0])**2  + abs(y - points[value-1][i][1])**2)**0.5 - TYPES[NAMES[value]][0] - TYPES[NAMES[value-1]][0]
+    #         if value==1 and dist < 10:
+    #             return depth
+    #         elif value ==1:
+    #             return 0
+    #         elif dist<10:
+    #             depth =  self.dfs(points,value-1,points[value-1][i][0],points[value-1][i][1], depth + 1)
+    #     return depth
     def get_state(self, game):
         topPoints = PriorityQueue()
         for i in range(0,80):
             topPoints.put((0,0,0,0,0,0))
-        points =  [[], [], [], [], [], [], [], [], [], [], []]
-        fruitHeight = 0
-        bigCorner = 0
-        fruitStack = 1
-        beegfruit = 0
-        depth = 0
+        # points =  [[], [], [], [], [], [], [], [], [], [], []]
+        # fruitHeight = 0
+        # bigCorner = 0
+        # fruitStack = 1
+        # beegfruit = 0
+        # depth = 0
         for fruit in FRUITS:
             type = TYPES[fruit.type][2]
-            fruitHeight = max (fruit.fruitBody.position[1]+fruit.radius ,fruitHeight )
-            if(beegfruit < type):
-                beegfruit = type
-                bigCorner = abs(-fruit.radius + fruit.fruitBody.position[1] )+  min(abs(400-fruit.radius - fruit.fruitBody.position[0] ),abs(0-fruit.radius + fruit.fruitBody.position[0] ))<=10
-            elif(beegfruit == type):
-                if(not bigCorner):
-                    bigCorner = abs(-fruit.radius +fruit.fruitBody.position[1] )+  min(abs(400-fruit.radius - fruit.fruitBody.position[0]),abs(0-fruit.radius - fruit.fruitBody.position[0]))<=10
-            points[type].append((fruit.fruitBody.position[0],fruit.fruitBody.position[1]))
+            # fruitHeight = max (fruit.fruitBody.position[1]+fruit.radius ,fruitHeight )
+            # if(beegfruit < type):
+            #     beegfruit = type
+            #     bigCorner = abs(-fruit.radius + fruit.fruitBody.position[1] )+  min(abs(400-fruit.radius - fruit.fruitBody.position[0] ),abs(0-fruit.radius + fruit.fruitBody.position[0] ))<=10
+            # elif(beegfruit == type):
+            #     if(not bigCorner):
+            #         bigCorner = abs(-fruit.radius +fruit.fruitBody.position[1] )+  min(abs(400-fruit.radius - fruit.fruitBody.position[0]),abs(0-fruit.radius - fruit.fruitBody.position[0]))<=10
+            # points[type].append((fruit.fruitBody.position[0],fruit.fruitBody.position[1]))
             peek =topPoints.get()
             if(fruit.radius + fruit.fruitBody.position[1] > peek[0]):
                 topPoints.put((fruit.radius + fruit.fruitBody.position[1], type, fruit.fruitBody.position[0], fruit.fruitBody.position[1],fruit.fruitBody.velocity[0],fruit.fruitBody.velocity[1]))
@@ -69,14 +73,14 @@ class Agent:
                 topPoints.put(peek)
                 
 
-        for x, y in points[beegfruit]:
-            fruitStack = max(fruitStack, self.dfs(points, beegfruit, x, y,depth))
+        # for x, y in points[beegfruit]:
+        #     fruitStack = max(fruitStack, self.dfs(points, beegfruit, x, y,depth))
         
         state = [
-            game.score,
-            fruitHeight,
-            bigCorner,
-            fruitStack,
+            # game.score,
+            # fruitHeight,
+            # bigCorner,
+            # fruitStack,
             TYPES[game.nextFruitName][2],
             TYPES[game.queuedFruitName][2],  
             ]
@@ -107,6 +111,7 @@ class Agent:
         for x, y in points[beegfruit]:
             fruitStack = max(fruitStack, self.dfs(points, beegfruit, x, y,0))
         return (fruitStack, bigCorner)
+    
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done)) # popleft if MAX_MEMORY is reached
 
@@ -125,19 +130,39 @@ class Agent:
         self.trainer.train_step(state, action, reward, next_state, done)
 
     def get_action(self, state):
-        # random moves: tradeoff exploration / exploitation
-        self.epsilon = 80 - self.n_games
-        final_move = [0]*401
-        if random.randint(0, 200) < self.epsilon:
-            move = random.randint(0, 400)
-            final_move[move] = 1
-        else:
-            state0 = torch.tensor(state, dtype=torch.float)
-            prediction = self.model(state0)
-            move = torch.argmax(prediction).item()
-            final_move[move] = 1
+        self.epsilon *= 0.995
+        self.epsilon = max(self.epsilon, 0.01)
+        # q_value = self.predict(state)[0]
+        final_move = [0]*4
+        if np.random.random() < self.epsilon:
+            x  = random.randint(0, 3)
+            final_move[x] = 1
+            return final_move
+        state0 = torch.tensor(state, dtype=torch.float)
+        prediction = self.model(state0)
+        # move = torch.argmax(prediction).item()
         
-        return final_move
+        # final_move[move] = 1
+        # print(pred)
+        return prediction.tolist()
+        # return list(prediction.numpy())
+
+        # return np.argmax(q_value)
+    
+
+        # # random moves: tradeoff exploration / exploitation
+        # self.epsilon = 80 - self.n_games
+        # final_move = [0]*401
+        # if random.randint(0, 200) < self.epsilon:
+        #     move = random.randint(0, 400)
+        #     final_move[move] = 1
+        # else:
+        #     state0 = torch.tensor(state, dtype=torch.float)
+        #     prediction = self.model(state0)
+        #     move = torch.argmax(prediction).item()
+        #     final_move[move] = 1
+        
+        # return final_move
 
 
 def train():
@@ -147,8 +172,13 @@ def train():
     record = 0
     agent = Agent()
     game = Game()
-    time = -1000
+    # time = -1000
     quit = False
+    count = 0
+    position = 0
+    move = 0
+    reward = 0
+    final_move = [1, 0, 0, 0]
     # agent.model.load1()
     while True:
         for event in pygame.event.get():
@@ -156,46 +186,73 @@ def train():
                 quit = True
         if quit:
             break
-        # print(Suika_Simulation.canPlace)
-        if not game.game_joever and Suika_Simulation.canPlace:
-            # time = pygame.time.get_ticks()
-            # get old state
-            state_old = agent.get_state(game)
+        if not game.game_joever:
+            if count % K == 0:
+            # print(Suika_Simulation.canPlace)
+            # if not game.game_joever and Suika_Simulation.canPlace:
+            
+                # time = pygame.time.get_ticks()
+                # get old state
+                state_old = agent.get_state(game)
+                final_move = agent.get_action(state_old)
+                # print(final_move)
+                if Suika_Simulation.canPlace == False:
+                    move = max(range(0,len(final_move)-1), key=lambda i: final_move[i]) # Don't include place as an option
+                else:
+                    # get move
+                    move = max(range(0,len(final_move)), key=lambda i: final_move[i])
+                    # position = max(range(0,len(final_move)), key=lambda i: final_move[i])
+                    # if position == 0:
+                    #     position = -1
+                    #     # time -= 1350
+                    
+                    # else:
+                    #     position = (position-1) * 1
+                    #     Suika_Simulation.canPlace = False
+                        # print("test")
+                old_score = game.score
+                # perform move and get new state
+                if move == 3:
+                    game.update(position)
+                    Suika_Simulation.canPlace = False
+                else:
+                    if move == 1: # Move left
+                        position = max(position - 1, 0)
+                    elif move == 2: # Move right
+                        position = min(position + 1, GAME_WIDTH - 1)
+                    game.update(-1)
+                score = game.score
+                reward = 0
+                # reward=score**0.5
+                # reward = score - old_score
+                if score > old_score:
+                    reward = 1
+                # if(score>old_score):
+                #     reward = 10
+                # reward += agent.get_reward(game)[0] * agent.get_reward(game)[0] -1+ agent.get_reward(game)[1]*5  
 
-            # get move
-            final_move = agent.get_action(state_old)
-            position = max(range(len(final_move)), key=lambda i: final_move[i])
+                # reward = reward + game.pseudoscore
 
-            if position == 0:
-                position = -1
-                # time -= 1350
-            else:
-                position = (position-1) * 1
-                Suika_Simulation.canPlace = False
-                print("test")
-            # perform move and get new state
-            old_score = game.score
-            game.update(position)
-            score = game.score
-            # reward=score**0.5
-            reward = score - old_score
-            # if(score>old_score):
-            #     reward = 10
-            # reward += agent.get_reward(game)[0] * agent.get_reward(game)[0] -1+ agent.get_reward(game)[1]*5  
+                state_new = agent.get_state(game)
+                done = game.game_joever
+                final_move = [0] * 4  
+                final_move[move] = 1
+                # train short memory
+                agent.train_short_memory(state_old, final_move, reward, state_new, done)
 
-            # reward = reward + game.pseudoscore
-
-            state_new = agent.get_state(game)
-            done = game.game_joever
-
-            # train short memory
-            agent.train_short_memory(state_old, final_move, reward, state_new, done)
-
-            # remember
-            agent.remember(state_old, final_move, reward, state_new, done)
+                # remember
+                agent.remember(state_old, final_move, reward, state_new, done)
+            else: # count % K != 0
+                move = max(range(0,len(final_move)), key=lambda i: final_move[i]) # Fix this
+                if move == 1:
+                    position = max(position - 1, 0)
+                elif move == 2:
+                    position = min(position + 1, GAME_WIDTH - 1)
+                game.update(-1)
         elif game.game_joever:
             # train long memory, plot result
-            reward = score- 1500**0.5
+            # reward = (score-3000)/100
+            reward = -1
             game.reset()
             agent.n_games += 1
             agent.train_long_memory()
@@ -211,8 +268,8 @@ def train():
             mean_score = total_score / agent.n_games
             plot_mean_scores.append(mean_score)
             plot(plot_scores, plot_mean_scores)
-        else:
-            game.update(-1)
+        
+
 
 
 if __name__ == '__main__':

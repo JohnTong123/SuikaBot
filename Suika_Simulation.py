@@ -58,13 +58,15 @@ def checkCollision(arbiter, space, data):
     if f1.justPlaced:
         f1.justPlaced=False
         if not canPlace:
-            print("test1")
             canPlace = True
     if f2.justPlaced:
         f2.justPlaced=False
         if not canPlace:
-            print("test2")
             canPlace = True
+    if f1.justMerged:
+        f1.justMerged=False
+    if f2.justMerged:
+        f2.justMerged=False
     if f1.type == f2.type:
         # FRUITS.remove(f1)
         # FRUITS.remove(f2)
@@ -89,6 +91,7 @@ def checkCollision(arbiter, space, data):
             newFruit.friction = FRUITFRICTION
             newFruit.collision_type = 2
             newFruit.justPlaced = False
+            newFruit.justMerged = True
 
             space.add(newBody, newFruit)
             FRUITS.append(newFruit)
@@ -106,8 +109,9 @@ def checkSegmentCollision(arbiter, space, data):
     if f2.justPlaced == True:
         f2.justPlaced=False
         if not canPlace:
-            print("test3")
             canPlace = True
+    if f2.justMerged == True:
+        f2.justMerged=False
     return True
 
 class Fruit(pymunk.Circle): # class of the fruit, including its type, size, vertical and horizontal velocity, x,y pos and angular velocity denoted as w
@@ -129,6 +133,7 @@ class Fruit(pymunk.Circle): # class of the fruit, including its type, size, vert
         self.color = TYPES[type][1]
         self.surf = pygame.Surface((self.radius*2, self.radius*2),pygame.SRCALPHA, 32)
         self.justPlaced= True
+        self.justMerged = False
         pygame.draw.circle(self.surf, self.color, (self.radius, self.radius), self.radius) # could create non circular hitboxes, will have to see
         self.rect = self.surf.get_rect()
         self.rect.center = (x, y)        
@@ -379,8 +384,8 @@ class Game:
                 #     fruit.timeAboveLine+=1
                 #     if fruit.timeAboveLine > 600:
                 #         self.game_joever = True
-                if fruit.rect.center[1] - fruit.radius < OFFSET+10 :
-                    if not fruit.justPlaced:
+                if fruit.rect.center[1] - fruit.radius < OFFSET+20 :
+                    if not fruit.justPlaced and not fruit.justMerged:
                         self.game_joever = True
                 # else:
                 #     fruit.justPlaced = False
