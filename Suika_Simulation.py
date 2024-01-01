@@ -384,7 +384,7 @@ class Game:
                 #     fruit.timeAboveLine+=1
                 #     if fruit.timeAboveLine > 600:
                 #         self.game_joever = True
-                if fruit.rect.center[1] - fruit.radius < OFFSET+20 :
+                if fruit.rect.center[1] - fruit.radius < OFFSET-20 :
                     if not fruit.justPlaced and not fruit.justMerged:
                         self.game_joever = True
                 # else:
