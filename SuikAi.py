@@ -5,10 +5,10 @@ from collections import deque
 from queue import PriorityQueue
 # from Suika_Simulation import Game, FRUITS, TYPES, NAMES
 
-from Suika_Simulation import Game, FRUITS, TYPES, NAMES, GAME_WIDTH
-import Suika_Simulation
+from Suika_Simulation_No_Pygame import Game, FRUITS, TYPES, NAMES, GAME_WIDTH
+import Suika_Simulation_No_Pygame
 from SuikAimodel import Linear_QNet, QTrainer
-import pygame
+# import pygame
 from helper import plot, plotWithRewards #prolly need a plot or smth idk
 
 # MAX_MEMORY = 100_000
@@ -17,14 +17,11 @@ MAX_MEMORY = 10000
 BATCH_SIZE = 32
 
 LR = 0.005
-K = 50
+K = 4
 
-from pygame.locals import (
-    QUIT,
-)
-
-
-
+# from pygame.locals import (
+#     QUIT,
+# )
 
 class Agent:
 
@@ -33,7 +30,7 @@ class Agent:
         self.epsilon = 1.0 # randomness
         self.gamma = 0.95 # discount rate
         self.memory = deque(maxlen=MAX_MEMORY) # popleft()
-        self.model = Linear_QNet(402, 512,256,4) #81 outputs 11 inputs
+        self.model = Linear_QNet(403, 512,256,4)
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
 
     # def dfs(self,points, value, x, y,depth):
@@ -46,7 +43,7 @@ class Agent:
     #         elif dist<10:
     #             depth =  self.dfs(points,value-1,points[value-1][i][0],points[value-1][i][1], depth + 1)
     #     return depth
-    def get_state(self, game):
+    def get_state(self, game,position):
         topPoints = PriorityQueue()
         for i in range(0,80):
             topPoints.put((0,0,0,0,0,0))
@@ -83,6 +80,7 @@ class Agent:
             # fruitStack,
             TYPES[game.nextFruitName][2],
             TYPES[game.queuedFruitName][2],  
+            position
             ]
         while(not topPoints.empty()):
             peek = topPoints.get()
@@ -185,29 +183,29 @@ def train():
     reward = 0
     final_move = [1, 0, 0, 0]
     totalreward = 0
+    old_score = 0
     # agent.model.load1()
     while True:
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                quit = True
-        if quit:
-            break
+        # for event in pygame.event.get():
+        #     if event.type == QUIT:
+        #         quit = True
+        # if quit:
+        #     break
         if not game.game_joever:
             if count % K == 0:
             # print(Suika_Simulation.canPlace)
             # if not game.game_joever and Suika_Simulation.canPlace:
-            
                 # time = pygame.time.get_ticks()
                 # get old state
-                state_old = agent.get_state(game)
+                state_old = agent.get_state(game, position)
                 final_move = agent.get_action(state_old)
                 # print(final_move)
-                if Suika_Simulation.canPlace == False:
-                    move = max(range(1,len(final_move)-1), key=lambda i: final_move[i]) # Don't include place as an option
+                if Suika_Simulation_No_Pygame.canPlace == False:
+                    move = max(range(0,len(final_move)-1), key=lambda i: final_move[i]) # Don't include place as an option
                 else:
                     # get move
-                    # move = max(range(0,len(final_move)), key=lambda i: final_move[i])
-                    move = 3
+                    move = max(range(0,len(final_move)), key=lambda i: final_move[i])
+                    # move = 3
                     # position = max(range(0,len(final_move)), key=lambda i: final_move[i])
                     # if position == 0:
                     #     position = -1
@@ -217,11 +215,11 @@ def train():
                     #     position = (position-1) * 1
                     #     Suika_Simulation.canPlace = False
                         # print("test")
-                old_score = game.score
+                
                 # perform move and get new state
-                if move == 3 or move == 0:
+                if move == 3:
+                    Suika_Simulation_No_Pygame.canPlace = False
                     game.update(position)
-                    Suika_Simulation.canPlace = False
                     # while not Suika_Simulation.canPlace and not game.game_joever:
                     #     game.update(-1)
                 else:
@@ -244,15 +242,16 @@ def train():
 
                 # reward = reward + game.pseudoscore
 
-                state_new = agent.get_state(game)
+                state_new = agent.get_state(game, position)
                 done = game.game_joever
-                final_move = [0] * 4  
+                final_move = [0] * 4
                 final_move[move] = 1
                 # train short memory
                 agent.train_short_memory(state_old, final_move, reward, state_new, done)
 
                 # remember
                 agent.remember(state_old, final_move, reward, state_new, done)
+                old_score = score
             else: # count % K != 0
                 move = max(range(0,len(final_move)), key=lambda i: final_move[i]) # Fix this
                 if move == 1:
@@ -268,6 +267,8 @@ def train():
             totalreward += reward
             rewards.append(totalreward)
             totalreward = 0
+            old_score = 0
+            position = 0
             game.reset()
             agent.n_games += 1
             agent.train_long_memory()
@@ -283,13 +284,12 @@ def train():
             mean_score = total_score / agent.n_games
             plot_mean_scores.append(mean_score)
             # plot(plot_scores, plot_mean_scores)
-            plot(plot_scores, plot_mean_scores, rewards)
+            plotWithRewards(plot_scores, plot_mean_scores, rewards)
         
 
 
 
 if __name__ == '__main__':
-    pygame.init()
-    
+    # pygame.init()
     train()
-    pygame.quit()
+    # pygame.quit()

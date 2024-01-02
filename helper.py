@@ -20,27 +20,41 @@ def plot(scores, mean_scores, rewards):
     plt.pause(.1)
 
 def plotWithRewards(scores, mean_scores, rewards):
+    if len(rewards) != 1:
+        plt.close()  # Close the previous plot, if any
     figure, (ax1, ax2) = plt.subplots(2, sharex=True) 
     display.clear_output(wait=True)
-    display.display(plt.gcf())
-    plt.clf()
-    # plt.title('Training...')
-    # ax1.xlabel('Number of Games')
-    # ax1.ylabel('Score')
+    # plt.clf()
+    # display.display(plt.gcf())
+    # plt.clf()
 
-    figure.suptitle('Scores')
-    ax1.plot([1, 2], scores)
-    ax1.plot([1, 2], mean_scores)
-    # ax1.ylim(ymin=0)
-    # ax1.text(len(scores)-1, scores[-1], str(scores[-1]))
-    # ax1.text(len(mean_scores)-1, mean_scores[-1], str(mean_scores[-1]))
+    # Set titles for each subplot and the figure
+    ax1.set_title('Scores over Time')
+    ax2.set_title('Rewards over Time')
+    figure.suptitle('Training Progress')
 
-    ax2.plot([1, 2], rewards)
-    # ax2.xlabel('Frames')
-    # ax2.ylabel('Reward')
+    # Plotting the scores and mean scores on ax1
+    ax1.plot(scores, label='Scores')
+    ax1.plot(mean_scores, label='Mean Scores')
+    ax1.legend()
 
-    # plt.show(block=False)
-    plt.show(block=True)
-    plt.pause(.1)
+    # Optional: Annotate the last point for better clarity
+    ax1.annotate(f'{scores[-1]}', (len(scores)-1, scores[-1]), textcoords="offset points", xytext=(0,10), ha='center')
+    ax1.annotate(f'{mean_scores[-1]}', (len(mean_scores)-1, mean_scores[-1]), textcoords="offset points", xytext=(0,10), ha='center')
+
+    # Plotting the rewards on ax2
+    ax2.plot(rewards, label='Rewards', color='green')
+    ax2.legend()
+
+    # Setting labels for axes
+    ax2.set_xlabel('Number of Games')
+    ax1.set_ylabel('Score')
+    ax2.set_ylabel('Reward')
+
+    # Display the plot
+    
+    plt.show(block=False)
+    plt.pause(0.1)
+
 
 # plot([102, 106], [102, 104], [6, 7])
