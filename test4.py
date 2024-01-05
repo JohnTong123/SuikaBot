@@ -7,7 +7,7 @@ from queue import PriorityQueue
 
 from Suika_Simulation_No_Pygame import Game, FRUITS, TYPES, GAME_WIDTH
 import Suika_Simulation_No_Pygame
-from SuikAimodel import Linear_QNet, QTrainer
+from SuikAiModelTest import Linear_QNet, QTrainer
 # import pygame
 from helper import plot, plotWithRewards #prolly need a plot or smth idk
 
@@ -37,7 +37,7 @@ class Agent:
         self.model = Linear_QNet(403, 512, 256, 4)
         self.target = Linear_QNet(403, 512, 256, 4)
         self.target.load_state_dict(self.model.state_dict())
-        self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
+        self.trainer = QTrainer(self.model, self.target, lr=LR, gamma=self.gamma)
 
     # def dfs(self,points, value, x, y,depth):
     #     for i in range(0,len(points[value-1])):
@@ -120,19 +120,19 @@ class Agent:
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done)) # popleft if MAX_MEMORY is reached
 
-    def train_long_memory(self):
-        if len(self.memory) > BATCH_SIZE:
-            mini_sample = random.sample(self.memory, BATCH_SIZE) # list of tuples
-        else:
-            mini_sample = self.memory
+    # def train_long_memory(self):
+    #     if len(self.memory) > BATCH_SIZE:
+    #         mini_sample = random.sample(self.memory, BATCH_SIZE) # list of tuples
+    #     else:
+    #         mini_sample = self.memory
 
-        states, actions, rewards, next_states, dones = zip(*mini_sample)
-        self.trainer.train_step(states, actions, rewards, next_states, dones)
-        #for state, action, reward, nexrt_state, done in mini_sample:
-        #    self.trainer.train_step(state, action, reward, next_state, done)
+    #     states, actions, rewards, next_states, dones = zip(*mini_sample)
+    #     self.trainer.train_step(states, actions, rewards, next_states, dones)
+    #     #for state, action, reward, nexrt_state, done in mini_sample:
+    #     #    self.trainer.train_step(state, action, reward, next_state, done)
 
-    def train_short_memory(self, state, action, reward, next_state, done):
-        self.trainer.train_step(state, action, reward, next_state, done)
+    # def train_short_memory(self, state, action, reward, next_state, done):
+    #     self.trainer.train_step(state, action, reward, next_state, done)
 
     def get_action(self, state):
         self.epsilon = max(self.epsilon * 0.99995, EPSILON_END)
@@ -254,10 +254,19 @@ def train():
                 final_move = [0] * 4
                 final_move[move] = 1
                 # train short memory
-                agent.train_short_memory(state_old, final_move, reward, state_new, done)
+                # agent.train_short_memory(state_old, final_move, reward, state_new, done)
 
-                # remember
+                # # remember
                 agent.remember(state_old, final_move, reward, state_new, done)
+
+                agent.trainer.train_step(agent.memory)
+
+                target_net_state_dict = agent.target.state_dict()
+                policy_net_state_dict = agent.model.state_dict()
+                for key in policy_net_state_dict:
+                    target_net_state_dict[key] = policy_net_state_dict[key]*TAU + target_net_state_dict[key]*(1-TAU)
+                agent.target.load_state_dict(target_net_state_dict)
+                
                 old_score = score
             else: # count % K != 0
                 move = max(range(0,len(final_move)), key=lambda i: final_move[i]) # Fix this
@@ -282,7 +291,7 @@ def train():
             position = 0
             game.reset()
             agent.n_games += 1
-            agent.train_long_memory()
+            # agent.train_long_memory()
 
             if score > record:
                 record = score

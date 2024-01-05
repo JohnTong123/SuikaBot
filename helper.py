@@ -3,7 +3,7 @@ from IPython import display
 
 plt.ion()
 
-def plot(scores, mean_scores, rewards):
+def plot(scores, mean_scores):
     display.clear_output(wait=True)
     display.display(plt.gcf())
     plt.clf()
@@ -12,14 +12,13 @@ def plot(scores, mean_scores, rewards):
     plt.ylabel('Score')
     plt.plot(scores)
     plt.plot(mean_scores)
-    plt.plot(rewards)
     plt.ylim(ymin=0)
     plt.text(len(scores)-1, scores[-1], str(scores[-1]))
     plt.text(len(mean_scores)-1, mean_scores[-1], str(mean_scores[-1]))
     plt.show(block=False)
     plt.pause(.1)
 
-def plotWithRewards(scores, mean_scores, rewards):
+def plotWithRewards(scores, mean_scores, rewards, mean_rewards):
     if len(rewards) != 1:
         plt.close()  # Close the previous plot, if any
     figure, (ax1, ax2) = plt.subplots(2, sharex=True) 
@@ -42,8 +41,12 @@ def plotWithRewards(scores, mean_scores, rewards):
     ax1.annotate(f'{scores[-1]}', (len(scores)-1, scores[-1]), textcoords="offset points", xytext=(0,10), ha='center')
     ax1.annotate(f'{mean_scores[-1]}', (len(mean_scores)-1, mean_scores[-1]), textcoords="offset points", xytext=(0,10), ha='center')
 
+    ax2.annotate(f'{rewards[-1]}', (len(rewards)-1, rewards[-1]), textcoords="offset points", xytext=(0,10), ha='center')
+    ax2.annotate(f'{mean_rewards[-1]}', (len(mean_rewards)-1, mean_rewards[-1]), textcoords="offset points", xytext=(0,10), ha='center')
+
     # Plotting the rewards on ax2
     ax2.plot(rewards, label='Rewards', color='green')
+    ax2.plot(mean_rewards, label='Mean Rewards')
     ax2.legend()
 
     # Setting labels for axes

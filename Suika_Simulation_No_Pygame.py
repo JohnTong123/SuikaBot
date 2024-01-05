@@ -59,8 +59,6 @@ def checkCollision(arbiter, space, data):
     if f2.justMerged:
         f2.justMerged=False
     if f1.type == f2.type:
-        # FRUITS.remove(f1)
-        # FRUITS.remove(f2)
         remove = False
         if f1 in FRUITS and f2 in FRUITS:
             remove=True
@@ -74,7 +72,6 @@ def checkCollision(arbiter, space, data):
             if f2 in FRUITS:
                 FRUITS.remove(f2)
             # Makes a new fruit the next level up
-            
             newBody = pymunk.Body(TYPES[NAMES[(TYPES[f1.type][2]+1)%11]][3], TYPES[NAMES[(TYPES[f1.type][2]+1)%11]][3] * 10)
             newBody.position = ((f1.fruitBody.position[0] + f2.fruitBody.position[0])/2, 
             (f1.fruitBody.position[1] + f2.fruitBody.position[1])/2)
@@ -86,7 +83,6 @@ def checkCollision(arbiter, space, data):
 
             space.add(newBody, newFruit)
             FRUITS.append(newFruit)
-            # FRUITS.add(newFruit)
             global score
             score += SCORES[(TYPES[f1.type][2]+1)%11]
             global pseudoscore
@@ -110,17 +106,9 @@ class Fruit(pymunk.Circle): # class of the fruit, including its type, size, vert
     def __init__(self, body, type, x, y = 100):
         self.fruitBody = body
         pymunk.Circle.__init__(self, self.fruitBody, TYPES[type][0], (0, 0))
-        # self.dx = 0
-        # self.dy = 0
-        # self.w = 0
-        # self.x = x
-        # self.y= y
-        # self.pastdx = 0
-        # self.pastdy = 0
         self.type = type
         # self.radius = TYPES[type][0]
         # self.mass = TYPES[type][3]
-
         self.justPlaced= True
         self.justMerged = False 
        
@@ -139,7 +127,6 @@ class Game:
             space.static_body, Vec2d(0, SCREEN_HEIGHT), Vec2d(0, 0), 0.0
         )
         shape.friction = FRICTION
-        # shape.collision_type = 1
         space.add(shape)
 
         shape = pymunk.Segment(
@@ -152,7 +139,6 @@ class Game:
             space.static_body, Vec2d(GAME_WIDTH, SCREEN_HEIGHT), Vec2d(GAME_WIDTH, 0), 0.0
         )
         shape.friction = FRICTION
-        # shape.collision_type = 1
         space.add(shape)
     
     def reset(self):
@@ -161,8 +147,6 @@ class Game:
         self.score = 0
         self.pseudoscore = 0
         self.game_joever = False
-        # for fruit in FRUITS:
-        #     fruit.kill()
         global space
         space = pymunk.Space()
         space.gravity = 0.0, -5.0
@@ -170,7 +154,6 @@ class Game:
             space.static_body, Vec2d(0, SCREEN_HEIGHT), Vec2d(0, 0), 0.0
         )
         shape.friction = FRICTION
-        # shape.collision_type = 1
         space.add(shape)
 
         shape = pymunk.Segment(
@@ -183,7 +166,6 @@ class Game:
             space.static_body, Vec2d(GAME_WIDTH, SCREEN_HEIGHT), Vec2d(GAME_WIDTH, 0), 0.0
         )
         shape.friction = FRICTION
-        # shape.collision_type = 1
         space.add(shape)
         space.add_collision_handler(1, 2).pre_solve = checkSegmentCollision
         space.add_collision_handler(2, 2).pre_solve = checkCollision
@@ -200,8 +182,7 @@ class Game:
         while FRUITS:
             FRUITS.pop()
 
-    def update(self, position):       
-        # clock.tick(FRAME_RATE)
+    def update(self, position):
         if (not self.game_joever):
             if position != -1:
                 body = pymunk.Body(TYPES[self.queuedFruitName][3], TYPES[self.queuedFruitName][3]*10)
@@ -211,11 +192,9 @@ class Game:
                 fruit.collision_type = 2
                 space.add(body, fruit)
                 FRUITS.append(fruit)
-                # FRUITS.add(fruit)
                 self.queuedFruitName = self.nextFruitName
                 self.nextFruitName = NAMES[random.choices(range(0,5), weights=SKEWED_PROBABILITY, k=1)[0]]
             for fruit in FRUITS:
-                # fruit.update()
                 if flipY(fruit.fruitBody.position[1]) - fruit.radius < OFFSET-20 :
                     if not fruit.justPlaced and not fruit.justMerged:
                         self.game_joever = True
@@ -224,4 +203,3 @@ class Game:
                 space.step(dt)
             self.score = score
             self.pseudoscore = pseudoscore
-        

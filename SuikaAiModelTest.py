@@ -4,6 +4,8 @@ import torch.optim as optim
 import torch.nn.functional as F
 import os
 
+from SuikAimodel import BATCH_SIZE
+
 class Linear_QNet(nn.Module):
     def __init__(self, input_size, hidden_size, next_layer,output_size):
         super().__init__()
@@ -36,10 +38,11 @@ class Linear_QNet(nn.Module):
         # self.eval()
 
 class QTrainer:
-    def __init__(self, model, lr, gamma):
+    def __init__(self, model, target, lr, gamma):
         self.lr = lr
         self.gamma = gamma
         self.model = model
+        self.target = target
         self.optimizer = optim.Adam(model.parameters(), lr=self.lr)
         self.criterion = nn.MSELoss()
 
@@ -59,21 +62,38 @@ class QTrainer:
             done = (done, )
 
         # 1: predicted Q values with current state
-        pred = self.model(state)
+        # pred = self.model(state)
+        state_action_values = self.model(state).gather(1, action)
 
-        target = pred.clone()
-        for idx in range(len(done)):
-            Q_new = reward[idx]
-            if not done[idx]:
-                Q_new = reward[idx] + self.gamma * torch.max(self.model(next_state[idx]))
 
-            target[idx][torch.argmax(action[idx]).item()] = Q_new
-    
+        # target = pred.clone()
+        # for idx in range(len(done)):
+        #     Q_new = reward[idx]
+        #     if not done[idx]:
+        #         Q_new = reward[idx] + self.gamma * torch.max(self.model(next_state[idx]))
+
+        #     target[idx][torch.argmax(action[idx]).item()] = Q_new
+
+        non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
+                                        batch.next_state)), device=device, dtype=torch.bool)
+        non_final_next_states = torch.cat([s for s in batch.next_state
+                                                if s is not None])
+        next_state_values = torch.zeros(BATCH_SIZE)
+        with torch.no_grad():
+            next_state_values[non_final_mask] = self.target(non_final_next_states).max(1).values
+        # Compute the expected Q values
+        expected_state_action_values = (next_state_values * self.gamma) + reward
+
+        # Compute Huber loss
+        # criterion = nn.SmoothL1Loss()
+        loss = self.criterion(state_action_values, expected_state_action_values.unsqueeze(1))
+
+
         # 2: Q_new = r + y * max(next_predicted Q value) -> only do this if not done
         # pred.clone()
         # preds[argmax(action)] = Q_new
         self.optimizer.zero_grad()
-        loss = self.criterion(target, pred)
+        # loss = self.criterion(target, pred)
         loss.backward()
 
         self.optimizer.step()
